@@ -1,105 +1,197 @@
-import React, { useEffect } from 'react';
-import MainLayout from '../Components/MainLayout';
-import { useForm, usePage } from '@inertiajs/react';
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
-export default function Edit({ article }) {
-    // Inisialisasi form dengan data artikel yang ada
-    const { data, setData, post, processing, errors } = useForm({
-        _method: 'PUT', // Method spoofing untuk Laravel
-        judul: article.judul || '',
-        isi: article.isi || '',
-        status: article.status || 'draft',
-        gambar: null,
-    });
+export default function ArticleEdit() {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [article, setArticle] = useState({ judul: '', isi: '', status: '', gambar: null });
+    const [newImage, setNewImage] = useState(null);
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        // Kita gunakan post karena multipart/form-data tidak dukung PUT secara native
-        // Tapi kita sudah tambahkan _method: 'PUT' di state data
-        post(`/articles/${article.id}`);
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const isEditor = user.peran === 'editor';
+    const isAdmin = user.peran === 'admin';
+    const isAuthor = user.peran === 'author';
+
+    useEffect(() => {
+        fetchArticle();
+    }, [id]);
+
+    const fetchArticle = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`/api/articles/${id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setArticle(response.data);
+        } catch (error) {
+            console.error(error);
+            navigate('/articles');
+        } finally {
+            setLoading(false);
+        }
     };
 
+    const handleUpdate = async (newStatus) => {
+        setSaving(true);
+        const formData = new FormData();
+
+        // Use method spoofing for Laravel PUT with Files
+        formData.append('_method', 'PUT');
+
+        // Status override or current
+        const statusToUse = typeof newStatus === 'string' ? newStatus : article.status;
+        formData.append('status', statusToUse);
+
+        // Only add fields if not Admin (Admin only changes status via buttons, or simple unpublish)
+        if (!isAdmin) {
+            formData.append('judul', article.judul);
+            formData.append('isi', article.isi);
+            if (newImage) formData.append('gambar', newImage);
+        }
+
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post(`/api/articles/${id}`, formData, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+            navigate('/articles');
+        } catch (error) {
+            console.error('Failed to update article', error);
+            alert(error.response?.data?.message || 'Gagal memperbarui artikel.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (loading) return <div className="text-center mt-10 text-gray-400">Memuat...</div>;
+
     return (
-        <MainLayout>
-            <div className="max-w-4xl mx-auto">
-                <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-bold text-white">Edit Artikel: <span className="text-indigo-400">{article.judul}</span></h1>
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                        article.status === 'publish' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+        <div className="max-w-4xl mx-auto">
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-3xl font-bold text-gray-100">
+                    {isEditor ? 'Review Artikel' : isAdmin ? 'Kelola Artikel' : 'Edit Artikel'}
+                </h1>
+                <span className={`px-3 py-1 rounded text-sm capitalize font-bold ${article.status === 'publish' ? 'bg-green-500/20 text-green-400' :
+                        article.status === 'review' ? 'bg-yellow-500/20 text-yellow-400' :
+                            'bg-gray-500/20 text-gray-400'
                     }`}>
-                        Status: {article.status}
-                    </span>
+                    Status: {article.status}
+                </span>
+            </div>
+
+            <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Content Editor */}
+                <div className="lg:col-span-2 space-y-6">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Judul</label>
+                        <input
+                            type="text"
+                            value={article.judul}
+                            onChange={e => setArticle({ ...article, judul: e.target.value })}
+                            className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-100"
+                            disabled={!isAuthor}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Konten</label>
+                        <textarea
+                            value={article.isi}
+                            onChange={e => setArticle({ ...article, isi: e.target.value })}
+                            rows="15"
+                            className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-100"
+                            disabled={!isAuthor}
+                        ></textarea>
+                    </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Kolom Kiri: Input Text */}
-                    <div className="lg:col-span-2 space-y-6 bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg">
-                        <div>
-                            <label className="block text-gray-400 text-sm mb-2">Judul</label>
-                            <input 
-                                type="text"
-                                className="w-full bg-gray-900 border border-gray-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                                value={data.judul}
-                                onChange={e => setData('judul', e.target.value)}
-                            />
-                            {errors.judul && <p className="text-red-500 text-xs mt-1">{errors.judul}</p>}
-                        </div>
+                {/* Sidebar: Image & Actions */}
+                <div className="space-y-6">
+                    <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Gambar</label>
+                        {article.gambar ? (
+                            <img src={`/storage/${article.gambar}`} alt="Cover" className="w-full h-40 object-cover rounded-md mb-2" />
+                        ) : (
+                            <div className="w-full h-40 bg-gray-800 rounded-md mb-2 flex items-center justify-center text-gray-500 text-xs">No Image</div>
+                        )}
 
-                        <div>
-                            <label className="block text-gray-400 text-sm mb-2">Konten</label>
-                            <textarea 
-                                rows="12"
-                                className="w-full bg-gray-900 border border-gray-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                                value={data.isi}
-                                onChange={e => setData('isi', e.target.value)}
-                            />
-                            {errors.isi && <p className="text-red-500 text-xs mt-1">{errors.isi}</p>}
-                        </div>
-                    </div>
-
-                    {/* Kolom Kanan: Gambar & Actions */}
-                    <div className="space-y-6">
-                        <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg">
-                            <label className="block text-gray-400 text-sm mb-4">Thumbnail Saat Ini</label>
-                            {article.gambar ? (
-                                <img 
-                                    src={`/storage/${article.gambar}`} 
-                                    className="w-full h-40 object-cover rounded-lg mb-4 border border-gray-600"
-                                    alt="Preview"
-                                />
-                            ) : (
-                                <div className="w-full h-40 bg-gray-900 rounded-lg mb-4 flex items-center justify-center text-gray-600 border border-dashed border-gray-600">
-                                    No Image
-                                </div>
-                            )}
-                            
-                            <label className="block text-gray-400 text-sm mb-2">Ganti Gambar (Opsional)</label>
-                            <input 
+                        {isAuthor && (
+                            <input
                                 type="file"
-                                className="block w-full text-xs text-gray-400 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-gray-700 file:text-white hover:file:bg-gray-600 cursor-pointer"
-                                onChange={e => setData('gambar', e.target.files[0])}
+                                onChange={e => setNewImage(e.target.files[0])}
+                                className="block w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:bg-gray-700 file:text-white"
+                                accept="image/*"
                             />
-                        </div>
-
-                        <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg space-y-3">
-                            <button 
-                                type="submit"
-                                disabled={processing}
-                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition shadow-indigo-500/20 shadow-lg disabled:opacity-50"
-                            >
-                                {processing ? 'Menyimpan...' : 'Update Artikel'}
-                            </button>
-                            
-                            <a 
-                                href="/articles" 
-                                className="block text-center w-full text-gray-400 hover:text-white py-2 text-sm transition"
-                            >
-                                Batal
-                            </a>
-                        </div>
+                        )}
                     </div>
-                </form>
+
+                    <div className="space-y-3">
+                        {isAuthor && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => handleUpdate('draft')}
+                                    className="w-full py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg transition-colors border border-gray-600"
+                                >
+                                    Simpan sebagai Draft
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleUpdate('review')}
+                                    className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow"
+                                >
+                                    Submit untuk Review
+                                </button>
+                            </>
+                        )}
+
+                        {isEditor && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => handleUpdate('publish')}
+                                    className="w-full py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow mb-2"
+                                >
+                                    Publish (Terbitkan)
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleUpdate('draft')} // Or specific 'reject' status if implemented
+                                    className="w-full py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-lg transition-colors"
+                                >
+                                    Reject (Kembalikan ke Author)
+                                </button>
+                            </>
+                        )}
+
+                        {isAdmin && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => handleUpdate('draft')} // Unpublish -> draft
+                                    className="w-full py-2 bg-yellow-600/20 hover:bg-yellow-600/30 text-yellow-500 border border-yellow-500/30 rounded-lg transition-colors"
+                                >
+                                    Unpublish (Tarik Berita)
+                                </button>
+                                {/* Delete is in List view, but added here for completeness if needed */}
+                            </>
+                        )}
+
+                        <button
+                            type="button"
+                            onClick={() => navigate('/articles')}
+                            className="w-full py-2 text-gray-400 hover:text-white text-sm"
+                        >
+                            Kembali
+                        </button>
+                    </div>
+                </div>
             </div>
-        </MainLayout>
+        </div>
     );
 }

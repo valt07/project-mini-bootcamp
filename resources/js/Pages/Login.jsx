@@ -1,79 +1,93 @@
-import React from 'react';
-import GuestLayout from '@/Components/GuestLayout';
-import { useForm, Head } from '@inertiajs/react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 export default function Login() {
-    // useForm Inertia menangani state dan validasi error dari backend secara otomatis
-    const { data, setData, post, processing, errors, reset } = useForm({
-        email: '',
-        password: '',
-        remember: false,
-    });
+    const [email, setEmail] = useState('admin@example.com');
+    const [password, setPassword] = useState('password');
+    const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const navigate = useNavigate();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        post('/login', {
-            onFinish: () => reset('password'), // Reset field password saja jika gagal
-        });
+        setLoading(true);
+        setError(null);
+
+        try {
+            // First get CSRF cookie if using Sanctum stateful, but for API setup we just hit endpoint
+            // await axios.get('/sanctum/csrf-cookie'); 
+
+            const response = await axios.post('/api/login', { email, password });
+
+            const { access_token, user } = response.data;
+
+            localStorage.setItem('token', access_token);
+            localStorage.setItem('user', JSON.stringify(user));
+
+            navigate('/dashboard');
+        } catch (err) {
+            console.error(err);
+            setError(err.response?.data?.message || 'Login failed. Check your credentials.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
-        <GuestLayout>
-            <Head title="Admin Login" />
-
-            <div className="text-center mb-8">
-                <h2 className="text-2xl font-black text-white">LOGIN ADMIN</h2>
-                <p className="text-gray-500 text-sm mt-1">Masukkan kredensial untuk akses CMS</p>
+        <div>
+            <div className="mb-6 text-center">
+                <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">
+                    HeadlineCore
+                </h2>
+                <p className="mt-2 text-sm text-gray-400">Sign in to manage your content</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-6">
+                {error && (
+                    <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded text-sm text-center">
+                        {error}
+                    </div>
+                )}
+
                 <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Email Address</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
                     <input
                         type="email"
-                        className={`w-full bg-gray-900 border ${errors.email ? 'border-red-500' : 'border-gray-700'} rounded-xl p-3.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none transition`}
-                        placeholder="admin@cms.news"
-                        value={data.email}
-                        onChange={(e) => setData('email', e.target.value)}
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-100 placeholder-gray-500 transition-all"
+                        placeholder="admin@example.com"
                         required
                     />
-                    {errors.email && <p className="text-red-500 text-[10px] mt-1 font-bold italic">{errors.email}</p>}
                 </div>
 
                 <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Password</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Password</label>
                     <input
                         type="password"
-                        className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-100 placeholder-gray-500 transition-all"
                         placeholder="••••••••"
-                        value={data.password}
-                        onChange={(e) => setData('password', e.target.value)}
                         required
                     />
-                    {errors.password && <p className="text-red-500 text-[10px] mt-1 font-bold italic">{errors.password}</p>}
-                </div>
-
-                <div className="flex items-center justify-between text-xs">
-                    <label className="flex items-center text-gray-400 cursor-pointer">
-                        <input 
-                            type="checkbox" 
-                            className="mr-2 rounded border-gray-700 bg-gray-900 text-indigo-600 focus:ring-0"
-                            checked={data.remember}
-                            onChange={(e) => setData('remember', e.target.checked)}
-                        />
-                        Ingat Saya
-                    </label>
-                    <a href="#" className="text-indigo-400 hover:text-indigo-300 font-bold">Lupa Password?</a>
                 </div>
 
                 <button
                     type="submit"
-                    disabled={processing}
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-xl transition-all shadow-lg shadow-indigo-500/20 active:scale-[0.98] disabled:opacity-50"
+                    disabled={loading}
+                    className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    {processing ? 'MENGOTENTIKASI...' : 'MASUK KE DASHBOARD'}
+                    {loading ? 'Signing in...' : 'Sign In'}
                 </button>
             </form>
-        </GuestLayout>
+
+            <div className="mt-4 text-center text-xs text-gray-500">
+                <p>Default Accounts:</p>
+                <p>admin@example.com / password</p>
+                <p>editor@example.com / password</p>
+            </div>
+        </div>
     );
 }

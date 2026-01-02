@@ -1,13 +1,15 @@
+import './bootstrap';
+import '../css/app.css';
+
 import React from 'react';
-import Router from './router';
+import { createRoot } from 'react-dom/client';
+import { RouterProvider } from 'react-router-dom';
+import router from './router';
 
-function App() {
-    return (
-        <div className="min-h-screen bg-gray-900">
-            <Router />
-        </div>
-    );
-}
+const root = createRoot(document.getElementById('app'));
 
-// WAJIB ADA: Agar bisa di-import oleh main.jsx
-export default App;
+root.render(
+    <React.StrictMode>
+        <RouterProvider router={router} />
+    </React.StrictMode>
+);
