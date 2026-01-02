@@ -3,11 +3,11 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Laravel React App</title>
+        <title>HeadlineCore CMS</title>
         @viteReactRefresh
-        @vite('resources/js/main.jsx')
+        @vite(['resources/js/app.jsx', 'resources/css/app.css'])
     </head>
-    <body>
-        <div id="root"></div>
+    <body class="font-sans antialiased bg-gray-50 text-gray-900">
+        <div id="app"></div>
     </body>
 </html>
