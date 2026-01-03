@@ -15,10 +15,14 @@ class ArtikelController extends Controller
     {
         $query = Artikel::with('penulis')->latest('dibuat_pada');
 
-        if ($user = $request->user()) {
+        // Cek user dengan guard sanctum karena route ini mungkin public
+        $user = $request->user('sanctum');
+
+        if ($user) {
             if ($user->peran === 'author') {
                 $query->where('id_penulis', $user->id);
             }
+            // Editor & Admin see all
         } else {
             $query->where('status', 'publish');
         }
@@ -118,5 +122,14 @@ class ArtikelController extends Controller
         $article = Artikel::with('penulis')->find($id);
         if (!$article) return response()->json(['message' => 'Not Found'], 404);
         return $article;
+    }
+
+    public function stats()
+    {
+        return response()->json([
+            'published' => Artikel::where('status', 'publish')->count(),
+            'review' => Artikel::where('status', 'review')->count(),
+            'draft' => Artikel::where('status', 'draft')->count(),
+        ]);
     }
 }

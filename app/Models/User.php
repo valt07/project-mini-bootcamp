@@ -56,6 +56,6 @@ class User extends Authenticatable
     //Relasi ke artikel
     public function articles()
     {
-        return $this->hasMany(Article::class, 'id_penulis');
+        return $this->hasMany(Artikel::class, 'id_penulis');
     }
 }

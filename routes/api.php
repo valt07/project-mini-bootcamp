@@ -25,5 +25,5 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/articles/{id}', [ArtikelController::class, 'destroy']);
     
     // User Management (Pengguna)
-    Route::apiResource('pengguna', \App\Http\Controllers\PenggunaController::class);
+    Route::apiResource('pengguna', \App\Http\Controllers\UserController::class);
 });
