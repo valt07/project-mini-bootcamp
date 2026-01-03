@@ -16,7 +16,7 @@ return new class extends Migration
             $table->text('isi');
             
             // Relasi ke tabel pengguna
-            $table->foreignId('id_penulis')->constrained('users')->onDelete('cascade');
+            $table->foreignId('id_penulis')->constrained('pengguna')->onDelete('cascade');
             
             // Status alur kerja: Draft -> Review -> Publish
             $table->enum('status', ['draft', 'review', 'publish'])->default('draft');
