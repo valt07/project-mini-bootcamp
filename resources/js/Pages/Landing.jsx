@@ -31,7 +31,7 @@ export default function LandingPage() {
                             HeadlineCore
                         </span>
                         <Link to="/login" className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-full hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20">
-                            Login (Admin/Editor/Author)
+                            Login
                         </Link>
                     </div>
                 </div>
