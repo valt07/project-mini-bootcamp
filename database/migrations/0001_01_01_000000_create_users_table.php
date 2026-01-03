@@ -19,18 +19,14 @@ return new class extends Migration
             $table->string('kata_sandi');
             $table->enum('peran', ['admin', 'author', 'editor'])->default('author');
             $table->rememberToken();
-            $table->timestamps();
+            $table->timestamp('dibuat_pada')->useCurrent();
+            $table->timestamp('diubah_pada')->useCurrent()->useCurrentOnUpdate();
         });
 
-        Schema::create('personal_access_tokens', function (Blueprint $table) {
-            $table->id();
-            $table->morphs('tokenable');
-            $table->string('nama');
-            $table->string('token', 64)->unique();
-            $table->text('abilities')->nullable();
-            $table->timestamp('last_used_at')->nullable();
-            $table->timestamp('expires_at')->nullable();
-            $table->timestamps();
+        Schema::create('password_reset_tokens', function (Blueprint $table) {
+            $table->string('email')->primary();
+            $table->string('token');
+            $table->timestamp('created_at')->nullable();
         });
 
         Schema::create('sessions', function (Blueprint $table) {
@@ -48,7 +44,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('users');
+        Schema::dropIfExists('pengguna');
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
         Schema::dropIfExists('personal_access_tokens');
